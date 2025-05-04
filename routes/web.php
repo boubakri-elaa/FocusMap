@@ -24,4 +24,4 @@ Route::get('/userspace', [ObjectifController::class, 'index'])->name('userspace'
 
 Route::put('/objectifs/{objectif}', [ObjectifController::class, 'update'])->name('objectifs.update')->middleware('auth');
 Route::delete('/objectifs/{objectif}', [ObjectifController::class, 'destroy'])->name('objectifs.destroy')->middleware('auth');
-Issues:
+Route::post('/objectifs/suggest-steps', action: [ObjectifController::class, 'suggestSteps'])->name('objectifs.suggest-steps')->middleware('auth');
