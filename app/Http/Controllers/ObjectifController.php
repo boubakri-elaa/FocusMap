@@ -338,4 +338,39 @@ protected function generateStepsWithGemini($objectifTitle)
         throw $e;
     }
 } */
+
+private function checkAndAssignBadge(Objectif $objectif)
+{
+    $user = $objectif->user;
+
+    // Vérifier le nombre total d'étapes et le nombre d'étapes complètes
+    $etapesTotal = $objectif->etapes->count();
+    $etapesComplètes = $objectif->etapes->whereIn('id', $user->completedEtapes->pluck('id'))->count();
+
+    // Si toutes les étapes sont complétées, attribuer un badge
+    if ($etapesTotal > 0 && $etapesComplètes === $etapesTotal) {
+        // Récupère un badge spécifique
+        $badge = Badge::where('name', 'Objectif accompli')->first();
+
+        // Vérifier si le badge existe et si l'utilisateur ne l'a pas déjà
+        if ($badge && !$user->badges->contains($badge->id)) {
+            $user->badges()->attach($badge->id);
+        }
+    }
+}
+
+
+public function completeEtape($id)
+{
+    $etape = Etape::findOrFail($id);
+    $user = auth()->user();
+
+    // Vérifie si ce n’est pas déjà fait
+    if (!$user->completedEtapes->contains($etape->id)) {
+        $user->completedEtapes()->attach($etape->id);
+    }
+
+    return back()->with('success', 'Étape marquée comme complétée.');
+}
+
  }

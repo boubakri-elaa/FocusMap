@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Controllers/Api/ObjectifApiController.php
 
 namespace App\Http\Controllers\Api;
 

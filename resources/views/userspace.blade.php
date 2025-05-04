@@ -116,6 +116,36 @@
             .generated-step:hover {
                 background-color: #f0f0f0;
             }
+
+            .card.objectif-done {
+        border-left: 5px solid #28a745 !important; /* Vert */
+        background-color: #e9fbe9 !important;
+    }
+
+    .card.objectif-progress {
+        border-left: 5px solid #ffc107 !important; /* Orange */
+        background-color: #fff9e6 !important;
+    }
+
+    .card.objectif-pending {
+        border-left: 5px solid #dc3545 !important; /* Rouge */
+        background-color: #ffe5e5 !important;
+    }
+
+    .objectif-pending {
+        border-left: 5px solid red;
+        background-color: #ffe6e6; /* rouge clair */
+    }
+
+    .objectif-inprogress {
+        border-left: 5px solid orange;
+        background-color: #fff3cd; /* jaune clair */
+    }
+
+    .objectif-done {
+        border-left: 5px solid green;
+        background-color: #d4edda; /* vert clair */
+    }
         </style>
 
         <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsmind/style/jsmind.css" />
@@ -238,28 +268,50 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- Objectifs listés -->
             <h4 class="mt-5 title-color">📋 Mes Objectifs</h4>
             <div class="container mt-4">
                 <div class="row">
-                    @foreach($objectifs as $objectif)
+                    @forelse($objectifs as $objectif)
                                     <div class="col-md-4 mb-4">
-                                        <div class="card h-100 shadow-sm">
+                                        <div class="card h-100 shadow-sm {{ $objectif->getProgressColor(auth()->user()) }}">
                                             <div class="card-body d-flex flex-column">
-                                                <h5 class="card-title">{{ $objectif->titre }}</h5>
-                                                <p><strong>Description :</strong> {{ $objectif->description }}</p>
+                                                <h5 class="card-title d-flex justify-content-between align-items-center">{{ $objectif->titre }}
+                                                    @php
+                                                    $user = auth()->user();
+                                                    $total = $objectif->etapes->count();
+                                                    $completed = $objectif->etapes->whereIn('id', $user->completedEtapes->pluck('id'))->count();
+                                                    @endphp
+                                                    @if ($completed === 0)
+                                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Non commencé</span>
+                                                    @elseif ($completed < $total)
+                                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> En cours</span>
+                                                    @else
+                                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Complété</span>
+                                                    @endif
+                                                </h5>
+                                                <p class="card-text"><strong>Description :</strong> {{ $objectif->description }}</p>
                                                 <p><strong>Type :</strong> {{ $objectif->type }}</p>
                                                 <p><strong>Deadline :</strong> {{ $objectif->deadline ?? 'Non spécifiée' }}</p>
                                                 <p><strong>Lieu :</strong> {{ $objectif->lieu ?? 'Non spécifié' }}</p>
                                                 @if ($objectif->etapes->isNotEmpty())
                                                     <h6 class="mt-3">Étapes :</h6>
                                                     @foreach($objectif->etapes as $etape)
-                                                        <div class="card mb-2 border-0 bg-light">
-                                                            <div class="card-body p-2">
-                                                                <li>{{ $etape->titre }} - {{ $etape->description }}</li>
-                                                            </div>
-                                                        </div>
+                                                    <div class="etape-card mb-2 p-2 rounded {{ auth()->user()->completedEtapes->contains($etape->id) ? 'bg-success text-white' : 'bg-light' }}"
+                                                        data-etape-id="{{ $etape->id }}"
+                                                        data-objectif-id="{{ $objectif->id }}">
+                                                       <div class="d-flex justify-content-between align-items-center">
+                                                           <div>
+                                                               <h6 class="mb-1">{{ $etape->titre }}</h6>
+                                                               <p class="mb-0 small">{{ $etape->description }}</p>
+                                                           </div>
+                                                           <form action="{{ route('etape.complete', $etape->id) }}" method="POST">
+                                                               @csrf
+                                                               <button type="submit" class="btn btn-success btn-sm">✅</button>
+                                                           </form>
+                                                       </div>
+                                                   </div>
                                                     @endforeach
                                                 @endif
                                                 <form action="{{ route('objectifs.destroy', $objectif->id) }}" method="POST"
@@ -283,10 +335,39 @@
                                             </div>
                                         </div>
                                     </div>
-                    @endforeach
+                                    @empty
+                                    <div class="col-12">
+                                        <div class="alert alert-info">Aucun objectif trouvé. Commencez par en créer un !</div>
+                                    </div>
+                    @endforelse
                 </div>
-            </div>
+            </div> 
 
+            <!-- Progression Section -->
+    <div class="mb-4 p-4 border rounded-3" style="border: 2px solid #6f42c1; background-color: #f8f9fa;">
+        <h3 class="text-center mb-4" style="font-weight: bold; color: #6f42c1;">Ta Progression</h3>
+        <div class="progress-container">
+            <div class="progress-bar" id="user-progress" style="width: {{ auth()->user()->getCompletionPercentage() }}%">
+                {{ auth()->user()->getCompletionPercentage() }}%
+            </div>
+        </div>
+        <h4 class="mt-4 text-center">🏆 Tes Badges</h4>
+        @isset($allBadges)
+            <div class="badge-container">
+                @forelse($allBadges as $badge)
+                    <div class="badge {{ in_array($badge['id'], $userBadges ?? []) ? 'unlocked' : 'locked' }}"
+                         title="{{ $badge['description'] }}">
+                        <i class="{{ $badge['icon'] }}"></i>
+                        <span class="badge-name">{{ $badge['name'] }}</span>
+                    </div>
+                @empty
+                    <p>Aucun badge disponible pour le moment</p>
+                @endforelse
+            </div>
+        @endisset
+    </div>
+        </div>
+        
             <!-- Carte Leaflet -->
             <h4 class="mt-5 title-color">🌍 Localisation de mes objectifs</h4>
             <div id="map"></div>
@@ -309,6 +390,7 @@
             }
         @endphp
     </body>
+
     <script>
         // Copier le titre de #objectif-titre dans #suggest-titre
         document.getElementById('objectif-titre').addEventListener('input', function () {
@@ -319,15 +401,15 @@
         document.getElementById('add-etape').addEventListener('click', function () {
             const index = document.querySelectorAll('.etape').length;
             const newEtape = `
-                                    <div class="etape mb-3">
-                                        <div class="mb-3">
-                                            <input type="text" name="etapes[${index}][titre]" class="form-control" placeholder="Titre de l'étape">
-                                        </div>
-                                        <div class="mb-3">
-                                            <textarea name="etapes[${index}][description]" class="form-control" placeholder="Décris cette étape"></textarea>
-                                        </div>
-                                        <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
-                                    </div>`;
+                                        <div class="etape mb-3">
+                                            <div class="mb-3">
+                                                <input type="text" name="etapes[${index}][titre]" class="form-control" placeholder="Titre de l'étape">
+                                            </div>
+                                            <div class="mb-3">
+                                                <textarea name="etapes[${index}][description]" class="form-control" placeholder="Décris cette étape"></textarea>
+                                            </div>
+                                            <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
+                                        </div>`;
             document.getElementById('etapes').insertAdjacentHTML('beforeend', newEtape);
         });
 
@@ -428,14 +510,14 @@
                             const etapeDiv = document.createElement('div');
                             etapeDiv.className = 'etape mb-3';
                             etapeDiv.innerHTML = `
-                                        <div class="mb-3">
-                                            <input type="text" name="etapes[${index}][titre]" class="form-control" value="${step}" placeholder="Titre de l'étape">
-                                        </div>
-                                        <div class="mb-3">
-                                            <textarea name="etapes[${index}][description]" class="form-control" placeholder="Décris cette étape"></textarea>
-                                        </div>
-                                        <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
-                                    `;
+                                            <div class="mb-3">
+                                                <input type="text" name="etapes[${index}][titre]" class="form-control" value="${step}" placeholder="Titre de l'étape">
+                                            </div>
+                                            <div class="mb-3">
+                                                <textarea name="etapes[${index}][description]" class="form-control" placeholder="Décris cette étape"></textarea>
+                                            </div>
+                                            <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
+                                        `;
                             etapesContainer.appendChild(etapeDiv);
                         });
                         document.querySelectorAll('.remove-etape').forEach(btn => {
@@ -523,16 +605,16 @@
                     const etapeDiv = document.createElement('div');
                     etapeDiv.className = 'etape mb-3';
                     etapeDiv.innerHTML = `
-                                    <div class="mb-3">
-                                        <input type="text" name="etapes[${index}][titre]" class="form-control"
-                                            value="${etape.titre || ''}" placeholder="Titre de l'étape">
-                                    </div>
-                                    <div class="mb-3">
-                                        <textarea name="etapes[${index}][description]" class="form-control"
-                                            placeholder="Décris cette étape">${etape.description || ''}</textarea>
-                                    </div>
-                                    <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
-                                `;
+                                        <div class="mb-3">
+                                            <input type="text" name="etapes[${index}][titre]" class="form-control"
+                                                value="${etape.titre || ''}" placeholder="Titre de l'étape">
+                                        </div>
+                                        <div class="mb-3">
+                                            <textarea name="etapes[${index}][description]" class="form-control"
+                                                placeholder="Décris cette étape">${etape.description || ''}</textarea>
+                                        </div>
+                                        <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
+                                    `;
                     etapesContainer.appendChild(etapeDiv);
                 });
 
@@ -627,16 +709,16 @@
                     // Reset steps to one empty step
                     const etapesContainer = document.getElementById('etapes');
                     etapesContainer.innerHTML = `
-                        <div class="etape mb-3">
-                            <div class="mb-3">
-                                <input type="text" name="etapes[0][titre]" class="form-control" placeholder="Titre de l'étape">
+                            <div class="etape mb-3">
+                                <div class="mb-3">
+                                    <input type="text" name="etapes[0][titre]" class="form-control" placeholder="Titre de l'étape">
+                                </div>
+                                <div class="mb-3">
+                                    <textarea name="etapes[0][description]" class="form-control" placeholder="Décris cette étape"></textarea>
+                                </div>
+                                <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
                             </div>
-                            <div class="mb-3">
-                                <textarea name="etapes[0][description]" class="form-control" placeholder="Décris cette étape"></textarea>
-                            </div>
-                            <button type="button" class="btn btn-danger remove-etape">Supprimer cette étape</button>
-                        </div>
-                    `;
+                        `;
 
                     // Reset suggest form title
                     const suggestTitre = document.getElementById('suggest-titre');
@@ -653,6 +735,9 @@
                 alert('Une erreur est survenue : ' + error.message);
             });
         });
+
+        
     </script>
+    <script src="{{ asset('js/goal-progress.js') }}"></script>
 
 @endsection
