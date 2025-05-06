@@ -42,4 +42,19 @@ class User extends Authenticatable
         $completed = $this->completedEtapes()->count();
         return $total > 0 ? round(($completed / $total) * 100) : 0;
     }
+    public function friends()
+    {
+        return $this->belongsToMany(User::class, 'friends', 'user_id', 'friend_id')
+                    ->withTimestamps();
+    }
+
+    public function friendRequests()
+    {
+        return $this->belongsToMany(User::class, 'friends', 'friend_id', 'user_id')
+                    ->withTimestamps();
+    }
+    public function comments()
+{
+    return $this->hasMany(Comment::class);
+}
 }

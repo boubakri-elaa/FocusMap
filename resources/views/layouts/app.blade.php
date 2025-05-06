@@ -48,15 +48,17 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/') }}">Accueil</a>
+                        <a class="nav-link" href="{{ route('login') }}">Déconnexion</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('login') }}">Se connecter</a>
+                    <li>
+                        <a class="nav-link" href="#amis" >Amis</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('register') }}">S'inscrire</a>
-                    </li>
+                    <li>
+                        <a class="nav-link" href="#objectifs" >Mes Objectifs</a>
+
+                    
                 </ul>
             </div>
         </div>

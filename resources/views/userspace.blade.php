@@ -146,6 +146,41 @@
         border-left: 5px solid green;
         background-color: #d4edda; /* vert clair */
     }
+
+    .progress-wrapper {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 30px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.progress-bar-modern {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6f42c1, #b583f2);
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    line-height: 30px;
+    transition: width 1.5s ease-in-out;
+}
+
+#progress-text {
+    position: relative;
+    z-index: 2;
+}
+/* Custom light green for card when all steps are completed */
+.card.bg-success {
+    background-color: #e6f4ea !important; /* Light, soft green */
+    color: #212529 !important; /* Dark text for readability */
+}
+
+/* Ensure progress bar keeps the default Bootstrap green */
+.progress-bar.bg-success {
+    background-color: #28a745 !important; /* Default Bootstrap green */
+}
         </style>
 
         <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsmind/style/jsmind.css" />
@@ -241,7 +276,14 @@
                                 </div>
                                 <button type="button" class="btn btn-success" id="add-etape">Ajouter une étape</button>
                             </div>
-
+                            <div class="mb-3">
+                                <label for="visibility" class="form-label">Visibilité de l’objectif</label>
+                                <select name="visibility" class="form-select" required>
+                                    <option value="private" {{ old('visibility') == 'private' ? 'selected' : '' }}>Privé</option>
+                                    <option value="friends" {{ old('visibility') == 'friends' ? 'selected' : '' }}>Amis</option>
+                                    <option value="public" {{ old('visibility') == 'public' ? 'selected' : '' }}>Public</option>
+                                </select>
+                            </div>
                             <button type="submit" id="submit-button" class="btn btn-primary w-100">Ajouter
                                 l’objectif</button>
                         </form>
@@ -271,84 +313,96 @@
             
             <!-- Objectifs listés -->
             <h4 class="mt-5 title-color">📋 Mes Objectifs</h4>
-            <div class="container mt-4">
+            <div class="container mt-4" id="objectifs">
                 <div class="row">
-                    @forelse($objectifs as $objectif)
-                                    <div class="col-md-4 mb-4">
-                                        <div class="card h-100 shadow-sm {{ $objectif->getProgressColor(auth()->user()) }}">
-                                            <div class="card-body d-flex flex-column">
-                                                <h5 class="card-title d-flex justify-content-between align-items-center">{{ $objectif->titre }}
-                                                    @php
-                                                    $user = auth()->user();
-                                                    $total = $objectif->etapes->count();
-                                                    $completed = $objectif->etapes->whereIn('id', $user->completedEtapes->pluck('id'))->count();
-                                                    @endphp
-                                                    @if ($completed === 0)
-                                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Non commencé</span>
-                                                    @elseif ($completed < $total)
-                                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> En cours</span>
-                                                    @else
-                                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Complété</span>
-                                                    @endif
-                                                </h5>
-                                                <p class="card-text"><strong>Description :</strong> {{ $objectif->description }}</p>
-                                                <p><strong>Type :</strong> {{ $objectif->type }}</p>
-                                                <p><strong>Deadline :</strong> {{ $objectif->deadline ?? 'Non spécifiée' }}</p>
-                                                <p><strong>Lieu :</strong> {{ $objectif->lieu ?? 'Non spécifié' }}</p>
-                                                @if ($objectif->etapes->isNotEmpty())
-                                                    <h6 class="mt-3">Étapes :</h6>
-                                                    @foreach($objectif->etapes as $etape)
-                                                    <div class="etape-card mb-2 p-2 rounded {{ auth()->user()->completedEtapes->contains($etape->id) ? 'bg-success text-white' : 'bg-light' }}"
-                                                        data-etape-id="{{ $etape->id }}"
-                                                        data-objectif-id="{{ $objectif->id }}">
-                                                       <div class="d-flex justify-content-between align-items-center">
-                                                           <div>
-                                                               <h6 class="mb-1">{{ $etape->titre }}</h6>
-                                                               <p class="mb-0 small">{{ $etape->description }}</p>
-                                                           </div>
-                                                           <form action="{{ route('etape.complete', $etape->id) }}" method="POST">
-                                                               @csrf
-                                                               <button type="submit" class="btn btn-success btn-sm">✅</button>
-                                                           </form>
-                                                       </div>
-                                                   </div>
-                                                    @endforeach
-                                                @endif
-                                                <form action="{{ route('objectifs.destroy', $objectif->id) }}" method="POST"
-                                                    class="mt-auto">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger btn-sm w-100 mt-3">Supprimer</button>
-                                                </form>
-                                                <button class="btn btn-warning btn-sm w-100 mt-2 edit-objectif"
-                                                    data-id="{{ $objectif->id }}"
-                                                    data-titre="{{ htmlspecialchars($objectif->titre, ENT_QUOTES, 'UTF-8') }}"
-                                                    data-description="{{ htmlspecialchars($objectif->description, ENT_QUOTES, 'UTF-8') }}"
-                                                    data-deadline="{{ $objectif->deadline }}"
-                                                    data-lieu="{{ htmlspecialchars($objectif->lieu ?? '', ENT_QUOTES, 'UTF-8') }}"
-                                                    data-type="{{ $objectif->type }}" data-etapes="{{ json_encode($objectif->etapes->map(function ($etape) {
-                            return [
-                                'titre' => htmlspecialchars($etape->titre ?? '', ENT_QUOTES, 'UTF-8'),
-                                'description' => htmlspecialchars($etape->description ?? '', ENT_QUOTES, 'UTF-8')
-                            ];
-                        })->toArray()) }}">Modifier</button>
-                                            </div>
-                                        </div>
+    @forelse($objectifs as $objectif)
+        @php
+            $user = auth()->user();
+            $total = $objectif->etapes ? $objectif->etapes->count() : 0;
+            $completed = $objectif->etapes && $user->completedEtapes ? $objectif->etapes->whereIn('id', $user->completedEtapes->pluck('id'))->count() : 0;
+            $objectifProgress = $total > 0 ? ($completed / $total) * 100 : 0;
+        @endphp
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm text-dark {{ $objectifProgress == 100 ? 'bg-success' : 'bg-light' }}">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title d-flex justify-content-between align-items-center">
+                        {{ $objectif->titre }}
+                        @if ($completed === 0)
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Non commencé</span>
+                        @elseif ($completed < $total)
+                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> En cours</span>
+                        @else
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Complété</span>
+                        @endif
+                    </h5>
+                    <div class="progress mt-2" style="height: 10px;">
+                        <div class="progress-bar {{ $objectifProgress == 100 ? 'bg-success' : ($objectifProgress > 0 ? 'bg-warning' : 'bg-danger') }}"
+                             role="progressbar"
+                             style="width: {{ $objectifProgress }}%;"
+                             aria-valuenow="{{ $objectifProgress }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100"></div>
+                    </div>
+                    <p class="card-text"><strong>Description :</strong> {{ $objectif->description }}</p>
+                    <p><strong>Type :</strong> {{ $objectif->type }}</p>
+                    <p><strong>Deadline :</strong> {{ $objectif->deadline ?? 'Non spécifiée' }}</p>
+                    <p><strong>Lieu :</strong> {{ $objectif->lieu ?? 'Non spécifié' }}</p>
+                    @if ($objectif->etapes->isNotEmpty())
+                        <h6 class="mt-3">Étapes :</h6>
+                        @foreach($objectif->etapes as $etape)
+                            <div class="etape-card mb-2 p-2 rounded {{ auth()->user()->completedEtapes->contains($etape->id) ? 'bg-success text-white' : 'bg-light' }}"
+                                 data-etape-id="{{ $etape->id }}"
+                                 data-objectif-id="{{ $objectif->id }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ $etape->titre }}</h6>
+                                        <p class="mb-0 small">{{ $etape->description }}</p>
                                     </div>
-                                    @empty
-                                    <div class="col-12">
-                                        <div class="alert alert-info">Aucun objectif trouvé. Commencez par en créer un !</div>
-                                    </div>
-                    @endforelse
+                                    <form action="{{ route('etape.complete', $etape->id) }}" method="POST" class="complete-etape-form">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success btn-sm">✅</button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+                    @endif
+                    <!-- Rest of the card (delete/edit buttons) -->
+                    <form action="{{ route('objectifs.destroy', $objectif->id) }}" method="POST" class="mt-auto">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger btn-sm w-100 mt-3">Supprimer</button>
+                    </form>
+                    <button class="btn btn-warning btn-sm w-100 mt-2 edit-objectif"
+                            data-id="{{ $objectif->id }}"
+                            data-titre="{{ htmlspecialchars($objectif->titre, ENT_QUOTES, 'UTF-8') }}"
+                            data-description="{{ htmlspecialchars($objectif->description, ENT_QUOTES, 'UTF-8') }}"
+                            data-deadline="{{ $objectif->deadline }}"
+                            data-lieu="{{ htmlspecialchars($objectif->lieu ?? '', ENT_QUOTES, 'UTF-8') }}"
+                            data-type="{{ $objectif->type }}"
+                            data-etapes="{{ json_encode($objectif->etapes->map(function ($etape) {
+                                return [
+                                    'titre' => htmlspecialchars($etape->titre ?? '', ENT_QUOTES, 'UTF-8'),
+                                    'description' => htmlspecialchars($etape->description ?? '', ENT_QUOTES, 'UTF-8')
+                                ];
+                            })->toArray()) }}">Modifier</button>
                 </div>
-            </div> 
+            </div>
+        </div>
+    @empty
+        <div class="col-12">
+            <div class="alert alert-info">Aucun objectif trouvé. Commencez par en créer un !</div>
+        </div>
+    @endforelse
+</div> 
 
             <!-- Progression Section -->
     <div class="mb-4 p-4 border rounded-3" style="border: 2px solid #6f42c1; background-color: #f8f9fa;">
         <h3 class="text-center mb-4" style="font-weight: bold; color: #6f42c1;">Ta Progression</h3>
         <div class="progress-container">
-            <div class="progress-bar" id="user-progress" style="width: {{ auth()->user()->getCompletionPercentage() }}%">
-                {{ auth()->user()->getCompletionPercentage() }}%
+            <div class="progress-wrapper">
+                <div class="progress-bar-modern" id="user-progress-bar">
+                    <span id="progress-text">{{ auth()->user()->getCompletionPercentage() }}%</span>
+                </div>
             </div>
         </div>
         <h4 class="mt-4 text-center">🏆 Tes Badges</h4>
@@ -376,7 +430,174 @@
             <h4 class="mt-5 text-center title-color">📅 Calendrier de mes objectifs</h4>
             <div id="calendar"></div>
         </div>
+        <!-- Objectifs partagés -->
+<div class="shared-objectifs mt-5 d-flex justify-content-center">
+    <div class="p-4 shadow border border-3 rounded-4" style="border-color: #ff6f61; max-width: 1100px; width: 100%;">
+        <h3 class="text-center mb-4" style="color: #ff6f61;">🎯 Objectifs Partagés</h3>
+        <div id="objectif-cards" class="d-flex flex-wrap justify-content-center gap-4"></div>
+    </div>
+</div>
 
+<style>
+    .objectif-card {
+        width: 320px;
+        height: 220px;
+        perspective: 1000px;
+    }
+
+    .card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+    }
+
+    .objectif-card:hover .card-inner {
+        transform: rotateY(180deg);
+    }
+
+    .card-front, .card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .card-front {
+        background-color: #fdfdfd;
+    }
+
+    .card-back {
+        background-color: #fbeeee;
+        transform: rotateY(180deg);
+        overflow-y: auto;
+        font-size: 0.95rem;
+    }
+
+    .like-btn {
+        cursor: pointer;
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+        transition: transform 0.2s;
+    }
+
+    .like-btn:hover {
+        transform: scale(1.2);
+    }
+
+    .like-btn.liked {
+        color: #dc3545 !important;
+    }
+
+    .comment-form {
+        width: 100%;
+    }
+
+    .comment-input {
+        width: 100%;
+        height: 35px;
+        font-size: 0.85rem;
+        padding: 6px 8px;
+        margin-bottom: 5px;
+    }
+
+    .comment-btn {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+    }
+
+    .comment-list {
+        width: 100%;
+        max-height: 80px;
+        overflow-y: auto;
+    }
+
+    .comment-item {
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+        word-wrap: break-word;
+    }
+</style>
+
+        <!-- Friend Management Section -->
+<div id="amis" class="friends-section mt-5 d-flex justify-content-center">
+    <div class="card shadow-lg rounded-4 p-4" style="max-width: 500px; width: 100%; border: none;">
+        <h4 class="text-center mb-4" style="color: #ff6f61;">Gérer les Amis</h4>
+        <form id="add-friend-form" class="mb-3">
+            <div class="input-group">
+                <input type="number" class="form-control" name="friend_id" placeholder="ID de l'utilisateur" required>
+                <button type="submit" class="btn btn-coral">Ajouter</button>
+            </div>
+        </form>
+        <ul id="friends-list" class="list-group">
+            @foreach (auth()->user()->friends as $friend)
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>{{ $friend->name }}</span>
+                    <button class="btn btn-sm btn-coral" onclick="removeFriend({{ $friend->id }})">
+                        Supprimer
+                    </button>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+    <style>.btn-coral {
+        background-color: #ff6f61;
+        color: white;
+        border: none;
+    }
+    .btn-coral:hover {
+        background-color: #e85b50;
+    }
+</style>    
+</div>
+
+
+<script>
+    document.getElementById('add-friend-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('/friends/add', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        // Add friend to list dynamically
+        const friendsList = document.getElementById('friends-list');
+        const friendId = formData.get('friend_id');
+        fetch(`/users/${friendId}`)
+            .then(res => res.json())
+            .then(friend => {
+                friendsList.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${friend.name}
+                        <button class="btn btn-danger btn-sm" onclick="removeFriend(${friend.id})">Supprimer</button>
+                    </li>`;
+            });
+        this.reset();
+    })
+    .catch(error => alert('Erreur : ' + (error.message || 'Impossible d\'ajouter l\'ami')));
+});
+    </script>
 
         @php
             $calendarEvents = [];
@@ -525,6 +746,8 @@
                                 this.closest('.etape').remove();
                             });
                         });
+                        
+
                     } else {
                         alert("Erreur : " + data.error);
                     }
@@ -738,6 +961,244 @@
 
         
     </script>
-    <script src="{{ asset('js/goal-progress.js') }}"></script>
+    <!--Ticking steps after completion-->
+        <script src="{{ asset('js/goal-progress.js') }}"></script>
+    <!--Global progress-->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const progressBar = document.getElementById('user-progress-bar');
+            const percentage = {{ auth()->user()->getCompletionPercentage() }};
+            updateGlobalProgressBar(percentage);
+        });
+        function updateGlobalProgressBar(percentage) {
+    const progressBar = document.getElementById('user-progress-bar');
+    const progressText = document.getElementById('progress-text');
+    if (progressBar && progressText) {
+        progressBar.style.width = percentage + '%';
+        progressText.textContent = percentage + '%';
+    }
+}
 
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    console.log('JavaScript loaded and DOMContentLoaded fired');
+    const forms = document.querySelectorAll('.complete-etape-form');
+    console.log('Found forms:', forms.length);
+    if (forms.length === 0) {
+        console.warn('No forms with class .complete-etape-form found. Check HTML.');
+    }
+
+    forms.forEach((form, index) => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            console.log(`Form ${index + 1} submission intercepted`);
+
+            const etapeCard = this.closest('.etape-card');
+            const etapeId = etapeCard.dataset.etapeId;
+            const objectifId = etapeCard.dataset.objectifId;
+            const formData = new FormData(this);
+
+            console.log('Sending AJAX for etapeId:', etapeId);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => {
+                console.log('Fetch response received');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('JSON data:', data);
+                if (data.success) {
+                    if (data.completed) {
+                        etapeCard.classList.add('bg-success', 'text-white');
+                        etapeCard.classList.remove('bg-light');
+                        console.log(`Updated etape ${etapeId} to completed`);
+                    } else {
+                        console.log(`Etape ${etapeId} already completed`);
+                    }
+
+                    const card = etapeCard.closest('.card');
+                    const progressBar = card.querySelector('.progress-bar');
+                    const badge = card.querySelector('.badge');
+                    const totalEtapes = card.querySelectorAll('.etape-card').length;
+                    const completedEtapes = card.querySelectorAll('.etape-card.bg-success').length;
+                    const objectifProgress = totalEtapes > 0 ? (completedEtapes / totalEtapes) * 100 : 0;
+
+                    // Update progress bar
+                    progressBar.style.width = `${objectifProgress}%`;
+                    progressBar.setAttribute('aria-valuenow', objectifProgress);
+                    progressBar.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+                    if (objectifProgress === 100) {
+                        progressBar.classList.add('bg-success');
+                    } else if (objectifProgress > 0) {
+                        progressBar.classList.add('bg-warning');
+                    } else {
+                        progressBar.classList.add('bg-danger');
+                    }
+
+                    // Update badge
+                    badge.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'text-dark');
+                    if (objectifProgress === 100) {
+                        badge.classList.add('badge', 'bg-success');
+                        badge.innerHTML = '<i class="bi bi-check-circle"></i> Complété';
+                    } else if (objectifProgress > 0) {
+                        badge.classList.add('badge', 'bg-warning', 'text-dark');
+                        badge.innerHTML = '<i class="bi bi-hourglass-split"></i> En cours';
+                    } else {
+                        badge.classList.add('badge', 'bg-danger');
+                        badge.innerHTML = '<i class="bi bi-x-circle"></i> Non commencé';
+                    }
+
+                    // Update card
+                    card.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'text-white', 'text-dark');
+                    card.classList.add('card', 'h-100', 'shadow-sm', 'text-dark');
+                    if (objectifProgress === 100) {
+                        card.classList.add('bg-success');
+                    } else {
+                        card.classList.add('bg-light');
+                    }
+
+                    console.log(`Card classes: ${card.className}`);
+                    console.log(`Progress bar classes: ${progressBar.className}`);
+                    console.log(`Badge classes: ${badge.className}`);
+                    console.log(`Updated progress for objectif ${objectifId}: ${objectifProgress}%`);
+                    updateGlobalProgressBar(data.user_completion);
+                    location.reload();
+
+                } else {
+                    alert('Erreur : ' + data.message);
+                    console.error('Server error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('Une erreur s’est produite : ' + error.message);
+            });
+        });
+    });
+
+    // Fallback for button clicks
+    document.addEventListener('click', function (e) {
+        const button = e.target.closest('.complete-etape-form button[type="submit"]');
+        if (button) {
+            e.preventDefault();
+            console.log('Fallback: Button click intercepted');
+            const form = button.closest('form');
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+});
+
+//flipping cards for shared objectives
+// Fetch shared objectives
+fetch('/objectifs/shared', {
+    headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    }
+})
+.then(response => response.json())
+.then(objectifs => {
+    console.log('Objectives:', objectifs);
+    const cardsContainer = document.getElementById('objectif-cards');
+    objectifs.forEach(obj => {
+        const card = document.createElement('div');
+        card.className = 'objectif-card';
+        card.innerHTML = `
+            <div class="card-inner">
+                <div class="card-front">
+                    <h5>${obj.titre}</h5>
+                    <p>Par : ${obj.user.name}</p>
+                </div>
+                <div class="card-back">
+                    <span class="like-btn" onclick="toggleLike(this)">❤️</span>
+                    <form class="comment-form" onsubmit="submitComment(event, ${obj.id}, this)">
+                        <input type="text" class="comment-input" name="content" placeholder="Ajouter un commentaire" required>
+                        <button type="submit" class="btn btn-primary btn-sm comment-btn">Envoyer</button>
+                    </form>
+                    <div class="comment-list" id="comments-${obj.id}"></div>
+                </div>
+            </div>`;
+        cardsContainer.appendChild(card);
+        // Fetch comments for this objective
+        fetchComments(obj.id);
+    });
+})
+.catch(error => console.error('Erreur fetching objectives:', error));
+
+// Toggle like button color and show alert
+function toggleLike(btn) {
+    console.log('Like button clicked');
+    btn.classList.toggle('liked');
+    if (btn.classList.contains('liked')) {
+        alert('Objectif aimé');
+    } else {
+        alert('Like supprimé');
+    }
+}
+
+// Fetch comments for an objective
+function fetchComments(objectifId) {
+    fetch(`/objectifs/${objectifId}/comments`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(comments => {
+        console.log(`Comments for objectif ${objectifId}:`, comments);
+        const commentList = document.getElementById(`comments-${objectifId}`);
+        commentList.innerHTML = '';
+        comments.forEach(comment => {
+            commentList.innerHTML += `
+                <div class="comment-item">
+                    <strong>${comment.user.name}</strong>: ${comment.content}
+                    <small>(${comment.created_at})</small>
+                </div>`;
+        });
+    })
+    .catch(error => console.error(`Erreur fetching comments for objectif ${objectifId}:`, error));
+}
+
+// Submit a comment
+function submitComment(event, objectifId, form) {
+    event.preventDefault();
+    const formData = new FormData(form);
+    fetch(`/objectifs/${objectifId}/comments`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Comment added:', data);
+        alert(data.message);
+        fetchComments(objectifId); // Refresh comments
+        form.reset();
+    })
+    .catch(error => {
+        console.error('Erreur adding comment:', error);
+        alert('Erreur : ' + (error.message || 'Impossible d\'ajouter le commentaire'));
+    });
+}
+</script>
+    
 @endsection

@@ -8,6 +8,7 @@ use App\Models\Etape;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use App\Models\Comment;
 
 class ObjectifController extends Controller
 {
@@ -23,6 +24,7 @@ class ObjectifController extends Controller
         'type' => 'required|string',
         'etapes.*.titre' => 'nullable|string|max:255',
         'etapes.*.description' => 'nullable|string',
+        'visibility' => 'required|in:public,private,friends',
     ]);
 
     try {
@@ -33,6 +35,7 @@ class ObjectifController extends Controller
             'deadline' => $request->deadline,
             'lieu' => $request->lieu,
             'type' => $request->type,
+            'visibility' =>$request->visibility,
         ]);
 
         if ($request->has('etapes')) {
@@ -77,6 +80,7 @@ class ObjectifController extends Controller
             'type' => 'required|string',
             'etapes.*.titre' => 'nullable|string|max:255',
             'etapes.*.description' => 'nullable|string',
+            'visibility' => 'required|in:public,private,friends',
         ]);
 
         $objectif->update([
@@ -85,6 +89,7 @@ class ObjectifController extends Controller
             'deadline' => $request->deadline,
             'lieu' => $request->lieu,
             'type' => $request->type,
+            'visibility' => $request->visibility,
         ]);
 
         if ($request->has('etapes')) {
@@ -202,7 +207,8 @@ class ObjectifController extends Controller
             'titre' => 'required|string|max:255',
         ], [
             'titre.required' => 'Le titre de l’objectif est requis.',
-            'titre.max' => 'Le titre ne peut pas dépasser 255 caractères.'
+            'titre.max' => 'Le titre ne peut pas dépasser 255 caractères.',
+            'visibility' => 'required|in:public,private,friends',
         ]);
 
         try {
@@ -230,7 +236,7 @@ protected function generateStepsWithGemini($objectifTitle)
             throw new \Exception('Clé API Gemini manquante dans .env');
         }
 
-        $prompt = "Génère une liste de 3 à 5 étapes concrètes pour atteindre l'objectif : \"$objectifTitle\". Chaque étape doit être une phrase claire et actionnable, formatée comme une liste numérotée (ex. 1. Faire X).";
+        $prompt = "Génère une liste de 3 à 5 étapes concrètes pour atteindre l'objectif : \"$objectifTitle\". Chaque étape doit être une phrase claire et actionnable,pas trop longue et formatée comme une liste numérotée (ex. 1. Faire X).";
 
         try {
             $response = Http::withHeaders([
@@ -277,67 +283,7 @@ protected function generateStepsWithGemini($objectifTitle)
             throw $e;
         }
     }
-/*  protected function generateStepsWithOpenAI($objectifTitle)
-{
-    // Mock response for testing
-    $mockSteps = [
-        "1. Rechercher des ressources sur {$objectifTitle}.",
-        "2. Planifier un calendrier pour {$objectifTitle}.",
-        "3. Pratiquer régulièrement pour maîtriser {$objectifTitle}.",
-        "4. Évaluer les progrès chaque semaine."
-    ];
-    return $mockSteps;*/
-    /*
-    $apiKey = env('OPENAI_API_KEY');
-    if (!$apiKey) {
-        throw new \Exception('Clé API OpenAI manquante dans .env');
-    }
 
-    $prompt = "Génère une liste de 3 à 5 étapes concrètes pour atteindre l'objectif : \"$objectifTitle\". Chaque étape doit être une phrase claire et actionnable, formatée comme une liste numérotée (ex. 1. Faire X).";
-
-    try {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json',
-        ])
-        ->withOptions([
-            'verify' => false, // Temporarily disable SSL verification (development only)
-        ])
-        ->timeout(15)
-        ->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-3.5-turbo',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Tu es un assistant qui génère des étapes claires et concises pour atteindre des objectifs.'],
-                ['role' => 'user', 'content' => $prompt],
-            ],
-            'max_tokens' => 200,
-            'temperature' => 0.7,
-        ]);
-
-        if ($response->failed()) {
-            throw new \Exception('Échec de la requête OpenAI : ' . $response->body());
-        }
-
-        $data = $response->json();
-        if (!isset($data['choices'][0]['message']['content'])) {
-            throw new \Exception('Réponse OpenAI invalide ou vide');
-        }
-
-        $steps = $data['choices'][0]['message']['content'];
-        $stepsArray = array_filter(array_map('trim', preg_split("/\n|\d+\.\s*/ /* ", $steps)), function ($step) {
-            return !empty($step) && !preg_match('/^\d+\.$/', $step);
-        });  
-
-        if (empty($stepsArray)) {
-            throw new \Exception('Aucune étape valide générée par OpenAI');
-        }
-
-        return array_values($stepsArray);
-    } catch (\Exception $e) {
-        Log::error('Erreur OpenAI pour l\'objectif : ' . $objectifTitle . ' - ' . $e->getMessage());
-        throw $e;
-    }
-} */
 
 private function checkAndAssignBadge(Objectif $objectif)
 {
@@ -360,17 +306,77 @@ private function checkAndAssignBadge(Objectif $objectif)
 }
 
 
-public function completeEtape($id)
+public function completeEtape(Request $request, $id)
 {
     $etape = Etape::findOrFail($id);
     $user = auth()->user();
 
     // Vérifie si ce n’est pas déjà fait
-    if (!$user->completedEtapes->contains($etape->id)) {
+    $isCompleted = !$user->completedEtapes->contains($etape->id);
+    if ($isCompleted) {
         $user->completedEtapes()->attach($etape->id);
     }
 
-    return back()->with('success', 'Étape marquée comme complétée.');
+    return response()->json([
+        'success' => true,
+        'completed' => $isCompleted,
+        'message' => $isCompleted ? 'Étape marquée comme complétée.' : 'Étape déjà complétée.'
+    ]);
 }
 
- }
+//Les objectifs public/amis
+public function getSharedObjectifs()
+    {
+        $user = Auth::user();
+        $objectifs = Objectif::where('visibility', 'public')
+            ->orWhere(function ($query) use ($user) {
+                $query->where('visibility', 'friends')
+                      ->whereIn('user_id', $user->friends()->pluck('users.id'));
+            })
+            ->with('user')
+            ->get();
+
+        return response()->json($objectifs);
+    }
+    //Gestion des commentaires 
+    public function storeComment(Request $request, $objectifId)
+    {
+        $request->validate([
+            'content' => 'required|string|max:500',
+        ]);
+
+        $comment = Comment::create([
+            'objectif_id' => $objectifId,
+            'user_id' => Auth::id(),
+            'content' => $request->content,
+        ]);
+
+        return response()->json([
+            'message' => 'Commentaire ajouté',
+            'comment' => [
+                'id' => $comment->id,
+                'content' => $comment->content,
+                'user' => ['name' => Auth::user()->name],
+                'created_at' => $comment->created_at->diffForHumans(),
+            ]
+        ]);
+    }
+
+    public function getComments($objectifId)
+    {
+        $comments = Comment::where('objectif_id', $objectifId)
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($comment) {
+                return [
+                    'id' => $comment->id,
+                    'content' => $comment->content,
+                    'user' => ['name' => $comment->user->name],
+                    'created_at' => $comment->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json($comments);
+    }
+}

@@ -24,6 +24,7 @@ class ObjectifApiController extends Controller
                 'latitude' => $objectif->latitude,
                 'longitude' => $objectif->longitude,
                 'type' => $objectif->type,
+                'visibility' =>$objectif->visibility,
                 // Tu peux ajouter d'autres informations ici si nécessaire
             ];
         });

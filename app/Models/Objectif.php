@@ -19,6 +19,8 @@ class Objectif extends Model
         'latitude',
         'longitude',
         'type',
+        'visibility',
+
     ];
 
     public function etapes(): HasMany
@@ -59,4 +61,8 @@ public function getProgressColor($user)
         return 'objectif-done'; // vert
     }
 }
+public function comments()
+    {
+        return $this->hasMany(Comment::class);
+    }
 }
