@@ -198,15 +198,14 @@
         <div class="container">
             <h2 class="title-color">🎯 Bienvenue dans ton espace personnel, {{ Auth::user()->name }} !</h2>
 
-            <!-- Large rectangle for adding an objectif -->
+            <!-- Formularire d'ajout d'objectifs -->
             <div class="mb-4 p-4 border rounded-3" style="border: 2px solid #007bff;">
                 <h3 class="text-center mb-4" style="font-weight: bold; color: #007bff;">Ajouter un Objectif</h3>
 
-                <!-- Row for form and mindmap -->
                 <div class="row">
-                    <!-- Formulary for objective (left side) -->
+                    <!-- Ajout d'Objectifs (à gauche)-->
                     <div class="col-md-6">
-                        <!-- Main form for adding objectif -->
+                        <!-- Informations Objectif -->
                         <form action="{{ route('objectifs.store') }}" method="POST" class="mb-4" id="objectif-form">
                             @csrf
                             <input type="hidden" name="id" id="objectif-id">
@@ -239,7 +238,7 @@
                                 </select>
                             </div>
 
-                            <!-- Étapes dynamiques -->
+                            <!-- Ajout d'étapes dynamique -->
                             <div class="mb-4 p-4 border rounded-3"
                                 style="border: 2px solid #28a745; background-color: #f9f9f9;">
                                 <h4 class="text-center" style="color: #28a745;">Étapes à suivre (facultatif)</h4>
@@ -288,7 +287,7 @@
                                 l’objectif</button>
                         </form>
 
-                        <!-- Separate form for suggesting steps -->
+                        <!-- Integration de l'API Gemini pour la suggestion d'étapes -->
                         <form action="{{ route('objectifs.suggest-steps') }}" method="POST" class="mt-3" id="suggest-form"
                             onsubmit="document.getElementById('suggest-btn').innerText='Chargement...';">
                             @csrf
@@ -303,7 +302,7 @@
                         <div class="alert alert-danger mt-3">{{ session('suggestion_error') }}</div>
                     @endif
 
-                    <!-- Mindmap (right side) -->
+                    <!-- Mindmap (à droite) -->
                     <div class="col-md-6">
                         <h4 class="mt-5 title-color">🧠 Vue en carte mentale</h4>
                         <div id="jsmind_container"></div>
@@ -366,7 +365,7 @@
                             </div>
                         @endforeach
                     @endif
-                    <!-- Rest of the card (delete/edit buttons) -->
+                    <!-- Modification/suppression carte -->
                     <form action="{{ route('objectifs.destroy', $objectif->id) }}" method="POST" class="mt-auto">
                         @csrf
                         @method('DELETE')
@@ -395,7 +394,7 @@
     @endforelse
 </div> 
 
-            <!-- Progression Section -->
+            <!-- Section Progression gloable -->
     <div class="mb-4 p-4 border rounded-3" style="border: 2px solid #6f42c1; background-color: #f8f9fa;">
         <h3 class="text-center mb-4" style="font-weight: bold; color: #6f42c1;">Ta Progression</h3>
         <div class="progress-container">
@@ -405,6 +404,7 @@
                 </div>
             </div>
         </div>
+                    <!-- Section Badges -->
         <h4 class="mt-4 text-center">🏆 Tes Badges</h4>
         @isset($allBadges)
             <div class="badge-container">
@@ -422,7 +422,7 @@
     </div>
         </div>
         
-            <!-- Carte Leaflet -->
+            <!-- Carte du monde -->
             <h4 class="mt-5 title-color">🌍 Localisation de mes objectifs</h4>
             <div id="map"></div>
 
@@ -430,6 +430,8 @@
             <h4 class="mt-5 text-center title-color">📅 Calendrier de mes objectifs</h4>
             <div id="calendar"></div>
         </div>
+
+
         <!-- Objectifs partagés -->
 <div class="shared-objectifs mt-5 d-flex justify-content-center">
     <div class="p-4 shadow border border-3 rounded-4" style="border-color: #ff6f61; max-width: 1100px; width: 100%;">
@@ -437,7 +439,6 @@
         <div id="objectif-cards" class="d-flex flex-wrap justify-content-center gap-4"></div>
     </div>
 </div>
-
 <style>
     .objectif-card {
         width: 320px;
@@ -527,7 +528,7 @@
     }
 </style>
 
-        <!-- Friend Management Section -->
+        <!-- Section de Gestion d'amis -->
 <div id="amis" class="friends-section mt-5 d-flex justify-content-center">
     <div class="card shadow-lg rounded-4 p-4" style="max-width: 500px; width: 100%; border: none;">
         <h4 class="text-center mb-4" style="color: #ff6f61;">Gérer les Amis</h4>
@@ -561,6 +562,8 @@
 
 
 <script>
+
+    //Ajout d'amis via ID
     document.getElementById('add-friend-form').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
@@ -618,7 +621,7 @@
             document.getElementById('suggest-titre').value = this.value;
         });
 
-        // Étapes dynamiques
+        //Ajot  d'Étapes dynamique
         document.getElementById('add-etape').addEventListener('click', function () {
             const index = document.querySelectorAll('.etape').length;
             const newEtape = `
@@ -691,15 +694,7 @@
                 }
             });
         });
-        /* document.getElementById('suggest-form').addEventListener('submit', function (e) {
-     const titre = document.getElementById('objectif-titre').value.trim();
-     if (titre.length < 4) {
-         e.preventDefault();
-         alert('Veuillez entrer un titre d’objectif d’au moins 4 caractères.');
-     } else {
-         document.getElementById('suggest-titre').value = titre;
-     }
-    }); */
+        
         document.getElementById('suggest-btn').addEventListener('click', function (e) {
             e.preventDefault();
             const titre = document.getElementById('objectif-titre').value.trim();
@@ -760,22 +755,12 @@
                 });
         });
 
-        // Handle Edit Button Click
+        //Bouton Modification de l'Objectif
         document.querySelectorAll('.edit-objectif').forEach(button => {
             button.addEventListener('click', function (e) {
                 e.preventDefault(); // Prevent any default behavior
-                console.log('Edit button clicked for objective ID:', this.getAttribute('data-id')); // Debug
-                console.log('Data attributes:', {
-                    id: this.getAttribute('data-id'),
-                    titre: this.getAttribute('data-titre'),
-                    description: this.getAttribute('data-description'),
-                    deadline: this.getAttribute('data-deadline'),
-                    lieu: this.getAttribute('data-lieu'),
-                    type: this.getAttribute('data-type'),
-                    etapes: this.getAttribute('data-etapes')
-                }); // Debug
-
-                // Get objective data from button attributes
+              
+                // Récupérer les informations de l'objectif
                 const id = this.getAttribute('data-id');
                 const titre = this.getAttribute('data-titre') || '';
                 const description = this.getAttribute('data-description') || '';
@@ -790,7 +775,7 @@
                     etapes = [];
                 }
 
-                // Fill form with objective data
+                //Remplir le formulaire avec ces informations
                 const form = document.getElementById('objectif-form');
                 const titreInput = document.getElementById('objectif-titre');
                 const descriptionTextarea = form.querySelector('textarea[name="description"]');
@@ -799,14 +784,6 @@
                 const typeSelect = form.querySelector('select[name="type"]');
                 const submitButton = document.getElementById('submit-button');
 
-                console.log('Form elements:', {
-                    titreInput: !!titreInput,
-                    descriptionTextarea: !!descriptionTextarea,
-                    deadlineInput: !!deadlineInput,
-                    lieuInput: !!lieuInput,
-                    typeSelect: !!typeSelect,
-                    submitButton: !!submitButton
-                }); // Debug
 
                 if (titreInput) titreInput.value = titre;
                 if (descriptionTextarea) descriptionTextarea.value = description;
@@ -819,11 +796,11 @@
                     console.error('One or more form elements not found');
                 }
 
-                // Clear existing steps
+                // Vider les champs d'étapes
                 const etapesContainer = document.getElementById('etapes');
                 etapesContainer.innerHTML = '';
 
-                // Add steps from objective
+                // Ajouter étapes d'un objectif
                 etapes.forEach((etape, index) => {
                     const etapeDiv = document.createElement('div');
                     etapeDiv.className = 'etape mb-3';
@@ -863,19 +840,14 @@
                 if (suggestTitre) suggestTitre.value = titre;
                 // Scroll to the top of the form
                 form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                console.log('Form action set to:', form.action); // Debug
             });
         });
 
         document.getElementById('objectif-form').addEventListener('submit', function (event) {
             event.preventDefault();
-            console.log('Form submitted with action:', this.action, 'Method:', this.querySelector('input[name="_method"]') ? 'PUT' : 'POST');
 
             // Create FormData
             const formData = new FormData(this);
-
-            // Debug: Log FormData contents
-            console.log('FormData contents:');
             for (let [key, value] of formData.entries()) {
                 console.log(`${key}: "${value}"`);
             }
@@ -884,11 +856,6 @@
             const titre = formData.get('titre');
             const description = formData.get('description');
             const type = formData.get('type');
-            console.log('Required fields check:', {
-                titre: titre || 'MISSING',
-                description: description || 'MISSING',
-                type: type || 'MISSING'
-            });
 
             // Validate required fields
             if (!titre || !description || !type) {
@@ -919,7 +886,6 @@
                 }
                 return response.json();
             }).then(data => {
-                console.log('Fetch response data:', data);
                 if (data && data.success) {
                     // Reset form
                     this.reset();
@@ -980,11 +946,10 @@
 }
 
     </script>
+    
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-    console.log('JavaScript loaded and DOMContentLoaded fired');
     const forms = document.querySelectorAll('.complete-etape-form');
-    console.log('Found forms:', forms.length);
     if (forms.length === 0) {
         console.warn('No forms with class .complete-etape-form found. Check HTML.');
     }
@@ -992,14 +957,10 @@
     forms.forEach((form, index) => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            console.log(`Form ${index + 1} submission intercepted`);
-
             const etapeCard = this.closest('.etape-card');
             const etapeId = etapeCard.dataset.etapeId;
             const objectifId = etapeCard.dataset.objectifId;
             const formData = new FormData(this);
-
-            console.log('Sending AJAX for etapeId:', etapeId);
 
             fetch(this.action, {
                 method: 'POST',
@@ -1009,21 +970,17 @@
                 }
             })
             .then(response => {
-                console.log('Fetch response received');
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('JSON data:', data);
                 if (data.success) {
                     if (data.completed) {
                         etapeCard.classList.add('bg-success', 'text-white');
                         etapeCard.classList.remove('bg-light');
-                        console.log(`Updated etape ${etapeId} to completed`);
                     } else {
-                        console.log(`Etape ${etapeId} already completed`);
                     }
 
                     const card = etapeCard.closest('.card');
@@ -1067,10 +1024,6 @@
                         card.classList.add('bg-light');
                     }
 
-                    console.log(`Card classes: ${card.className}`);
-                    console.log(`Progress bar classes: ${progressBar.className}`);
-                    console.log(`Badge classes: ${badge.className}`);
-                    console.log(`Updated progress for objectif ${objectifId}: ${objectifProgress}%`);
                     updateGlobalProgressBar(data.user_completion);
                     location.reload();
 
@@ -1091,7 +1044,6 @@
         const button = e.target.closest('.complete-etape-form button[type="submit"]');
         if (button) {
             e.preventDefault();
-            console.log('Fallback: Button click intercepted');
             const form = button.closest('form');
             form.dispatchEvent(new Event('submit', { cancelable: true }));
         }
@@ -1108,7 +1060,6 @@ fetch('/objectifs/shared', {
 })
 .then(response => response.json())
 .then(objectifs => {
-    console.log('Objectives:', objectifs);
     const cardsContainer = document.getElementById('objectif-cards');
     objectifs.forEach(obj => {
         const card = document.createElement('div');
@@ -1137,7 +1088,6 @@ fetch('/objectifs/shared', {
 
 // Toggle like button color and show alert
 function toggleLike(btn) {
-    console.log('Like button clicked');
     btn.classList.toggle('liked');
     if (btn.classList.contains('liked')) {
         alert('Objectif aimé');
@@ -1156,7 +1106,6 @@ function fetchComments(objectifId) {
     })
     .then(response => response.json())
     .then(comments => {
-        console.log(`Comments for objectif ${objectifId}:`, comments);
         const commentList = document.getElementById(`comments-${objectifId}`);
         commentList.innerHTML = '';
         comments.forEach(comment => {
@@ -1189,7 +1138,6 @@ function submitComment(event, objectifId, form) {
         return response.json();
     })
     .then(data => {
-        console.log('Comment added:', data);
         alert(data.message);
         fetchComments(objectifId); // Refresh comments
         form.reset();
