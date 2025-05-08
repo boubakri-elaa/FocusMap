@@ -50,7 +50,10 @@
                 <ul class="navbar-nav ms-auto">
                     
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('login') }}">Déconnexion</a>
+                        <form action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit" class="nav-link">Déconnexion</button>
+                        </form>
                     </li>
                     <li>
                         <a class="nav-link" href="#amis" >Amis</a>
